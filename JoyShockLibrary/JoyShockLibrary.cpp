@@ -54,6 +54,9 @@ void pollIndividualLoop(JoyShock *jc) {
 	case ControllerType::s_ds:
 		noIMULimit = 250;
 		break;
+	case ControllerType::addon:
+		noIMULimit = 1000;
+		break;
 	case ControllerType::n_switch:
 	default:
 		noIMULimit = 67;
@@ -283,6 +286,24 @@ int JslConnectDevices()
 	}
 	hid_free_enumeration(devs);
 
+	// find imu controller add-on
+	devs = hid_enumerate(IMU_ADDON_VENDOR, 0x0);
+	cur_dev = devs;
+	while (cur_dev) {
+		// do we need to confirm vendor id if this is what we asked for?
+		if (cur_dev->vendor_id == IMU_ADDON_VENDOR) {
+			// usb or bluetooth ds4:
+			printf("DS\n");
+			if (cur_dev->product_id == IMU_ADDON_USB) {
+				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
+				_joyshocks.emplace(jc->intHandle, jc);
+			}
+		}
+
+		cur_dev = cur_dev->next;
+	}
+	hid_free_enumeration(devs);
+
 	// init joyshocks:
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
@@ -297,6 +318,9 @@ int JslConnectDevices()
 		} // dualsense
 		else if (jc->controller_type == ControllerType::s_ds)
 		{
+		} // imu add-on
+		else if (jc->controller_type == ControllerType::addon){
+			jc->init_imu_addon();
 		} // charging grip
 		else if (jc->is_usb) {
 			//printf("USB\n");
@@ -381,7 +405,11 @@ void JslDisconnectAndDisposeAll()
 		}
 		else if (jc->controller_type == ControllerType::s_ds) {
 
-		} // TODO: Charging grip? bluetooth?
+		}
+		else if (jc->controller_type == ControllerType::addon) {
+			jc->deinit_imu_addon();
+		}  
+		// TODO: Charging grip? bluetooth?
 		else if (jc->is_usb) {
 			jc->deinit_usb();
 		}
@@ -743,6 +771,8 @@ int JslGetControllerType(int deviceId)
 			return JS_TYPE_DS4;
 		case ControllerType::s_ds:
 			return JS_TYPE_DS;
+		case ControllerType::addon:
+			return JS_TYPE_IMU_ADDON;	
 		default:
 		case ControllerType::n_switch:
 			return jc->left_right;

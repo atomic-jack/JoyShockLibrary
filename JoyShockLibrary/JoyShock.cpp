@@ -14,7 +14,7 @@
 #define _wcsdup wcsdup
 #endif
 
-enum ControllerType { n_switch, s_ds4, s_ds };
+enum ControllerType { n_switch, s_ds4, s_ds, addon };
 
 // PS5 stuff
 #define DS_VENDOR 0x054C
@@ -43,6 +43,14 @@ enum ControllerType { n_switch, s_ds4, s_ds };
 #define PRO_CONTROLLER 0x2009
 #define JOYCON_CHARGING_GRIP 0x200e
 #define L_OR_R(lr) (lr == 1 ? 'L' : (lr == 2 ? 'R' : '?'))
+
+// IMU Controller Add-On stuff
+// prototype, still in developement
+// currently utilizing a TeensyLC microcontroller + ISM330DHCX over i2c
+// reference PJRC forums for more information about how Teensy
+// microcontrollers can be configured as custom HID devices
+#define IMU_ADDON_VENDOR 0x16C0 //VID of device
+#define IMU_ADDON_USB 0x0478 //PID of device
 
 // internal. Don't expose this in JoyShockLibrary.hpp:
 typedef struct GYRO_AVERAGE_WINDOW {
@@ -301,6 +309,13 @@ public:
 			this->is_usb = true; // for now, only usb
 		}
 
+		if (dev->product_id == IMU_ADDON_USB) {
+			this->name = std::string("IMU Controller Add-On");
+			this->left_right = 3; // left and right?
+			this->controller_type = ControllerType::addon;
+			this->is_usb = true; // for now, only usb
+		}
+
 		this->serial = _wcsdup(dev->serial_number);
 		this->intHandle = uniqueHandle;
 
@@ -336,6 +351,15 @@ public:
 
         }
 
+		else if(this->controller_type == ControllerType::addon) {
+            unsigned char buf[64]; //currently, device only sends 14 byte packets
+            memset(buf, 0, 64);
+
+			// no gyro enable function needed, device sends IMU data on power-up
+
+            hid_read_timeout(handle, buf, 64, 100);
+        }
+
 		// initialise continuous calibration windows
 		reset_continuous_calibration();
 
@@ -355,6 +379,10 @@ public:
 		if (this->controller_type == ControllerType::s_ds4) {
 			// 250 samples per second
 			return 250 * this->gyro_average_window_seconds;
+		}
+		if (this->controller_type == ControllerType::addon){
+			// 1000 samples per seconds
+			return 1000 * this->gyro_average_window_seconds;
 		}
 		// 67 samples per second
 		return 67 * this->gyro_average_window_seconds;
@@ -742,6 +770,10 @@ public:
 			{
 				init_ds4_usb();
 			}
+		}
+		else if (controller_type == ControllerType::addon)
+		{
+			//do nothing, gyro is always enabled
 		}
 		else
 		{
@@ -1414,6 +1446,27 @@ public:
 
         hid_write(handle, &buf[1], 78);
     }
+
+	void init_imu_addon(){
+
+		unsigned char buf[64]; // 14 byte array
+		memset(buf, 0, 64);    // fills the 'buf' array with 0's
+
+		hid_set_nonblocking(this->handle, 0); // this function ensures that hid_read() will wait (block) until
+											  // there is data to read before returning.
+
+	}
+
+	void deinit_imu_addon(){
+
+		unsigned char buf[64]; // 14 byte array
+		memset(buf, 0, 64);    // fills the 'buf' array with 0's
+								// overwriting already present data?
+		
+		hid_set_nonblocking(this->handle, 1); // sets non blocking; calls to hid_read() will return immediately
+										      // with a value of 0 if there is no data to be read
+
+	}
 
 	//// mfosse credits Hypersect (Ryan Juckett), but I've removed deadzones so the consuming application can deal with them
 	//// http://blog.hypersect.com/interpreting-analog-sticks/

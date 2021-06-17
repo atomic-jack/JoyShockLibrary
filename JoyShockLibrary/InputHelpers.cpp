@@ -256,6 +256,66 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		return true;
 	}
 
+	if (jc->controller_type == ControllerType::addon) {
+		//float gyroConvert = 0;
+		//float accelConvert = 0;
+		int indexOffset = 2; // make room for the report ID byte + padding byte because i'm too lazy to bit shift my data from the IMU 
+							 // idea! use padding byte as an indicator for gyro/accel sensivity, change conversion factor 
+							 // using a switch-case - todo, will require possible physical buttons on device to change stuff on the fly
+							 // could open the door to incorporating other IMU's with different conversion values
+
+		// Accelerometer:
+		// Accelerometer data is relative (g)
+        int16_t accelSampleX = uint16_to_int16(packet[indexOffset + 0] | (packet[indexOffset + 1] << 8) & 0xFF00);
+        int16_t accelSampleY = uint16_to_int16(packet[indexOffset + 2] | (packet[indexOffset + 3] << 8) & 0xFF00);
+        int16_t accelSampleZ = uint16_to_int16(packet[indexOffset + 4] | (packet[indexOffset + 5] << 8) & 0xFF00);
+
+		// Gyroscope:
+        // Gyroscope data is relative (degrees/s)
+		int16_t gyroSampleX = uint16_to_int16(packet[indexOffset + 6] | (packet[indexOffset + 7] << 8) & 0xFF00);
+        int16_t gyroSampleY = uint16_to_int16(packet[indexOffset + 8] | (packet[indexOffset + 9] << 8) & 0xFF00);
+        int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset + 10] | (packet[indexOffset + 11] << 8) & 0xFF00);
+
+        if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0) {
+            // all zero?
+            hasIMU = false;
+        }
+
+		/*
+		switch(packet[2]){
+			case 0 :
+			gyroConvert = (2294.0F / 32767.0F);
+			accelConvert = 8192.0F;
+			break;
+		}
+		*/
+
+        // convert to real units
+        jc->imu_state.gyroX = (float) (gyroSampleX) * (2294.0 / 32767.0); // 
+        jc->imu_state.gyroY = (float) (gyroSampleY) * (2294.0 / 32767.0); // ST ISM330DHCX or LSM6DOX
+        jc->imu_state.gyroZ = (float) (gyroSampleZ) * (2294.0 / 32767.0); // future work: try using 1000deg/s to see if increased sensitivity is worth it
+
+        jc->imu_state.accelX = (float) (accelSampleX) / 8192.0;
+        jc->imu_state.accelY = (float) (accelSampleY) / 8192.0;
+        jc->imu_state.accelZ = (float) (accelSampleZ) / 8192.0;
+
+        //printf("IMU Controller Add-On accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
+
+        //printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
+        //	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
+
+		if (jc->use_continuous_calibration) {
+				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+					sqrtf(jc->imu_state.accelX * jc->imu_state.accelX + jc->imu_state.accelY * jc->imu_state.accelY + jc->imu_state.accelZ * jc->imu_state.accelZ));
+				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z, jc->accel_magnitude);
+			}
+
+			jc->imu_state.gyroX -= jc->offset_x;
+			jc->imu_state.gyroY -= jc->offset_y;
+			jc->imu_state.gyroZ -= jc->offset_z;
+
+		return true;
+	}
 	// most of this JoyCon and Pro Controller stuff is adapted from MFosse's Joycon driver.
 
 	// bluetooth button pressed packet:
