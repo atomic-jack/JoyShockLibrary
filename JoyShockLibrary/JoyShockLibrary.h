@@ -12,7 +12,8 @@
 #define JS_TYPE_PRO_CONTROLLER 3
 #define JS_TYPE_DS4 4
 #define JS_TYPE_DS 5
-#define JS_TYPE_IMU_ADDON 6 // preliminary support for prototype IMU Controller Add-On
+#define JS_TYPE_XBOX 6
+#define JS_TYPE_IMU_ADDON 7 // preliminary support for prototype IMU Controller Add-On
 
 #define JS_SPLIT_TYPE_LEFT 1
 #define JS_SPLIT_TYPE_RIGHT 2
