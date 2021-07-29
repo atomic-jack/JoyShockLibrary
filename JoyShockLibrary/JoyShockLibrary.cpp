@@ -55,7 +55,7 @@ void pollIndividualLoop(JoyShock *jc) {
 		noIMULimit = 250;
 		break;
 	case ControllerType::addon:
-		noIMULimit = 1000;
+		noIMULimit = 500;
 		break;
 	case ControllerType::n_switch:
 	default:
