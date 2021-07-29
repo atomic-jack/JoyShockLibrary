@@ -382,7 +382,7 @@ public:
 		}
 		if (this->controller_type == ControllerType::addon){
 			// 1000 samples per seconds
-			return 1000 * this->gyro_average_window_seconds;
+			return 500 * this->gyro_average_window_seconds;
 		}
 		// 67 samples per second
 		return 67 * this->gyro_average_window_seconds;
