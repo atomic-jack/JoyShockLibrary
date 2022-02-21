@@ -47,10 +47,12 @@ enum ControllerType { n_switch, s_ds4, s_ds, addon };
 // IMU Controller Add-On stuff
 // prototype, still in developement
 // currently utilizing a TeensyLC microcontroller + ISM330DHCX over i2c
+// also now supports BMI160 IMU, MPU6050 in progress
+// added support for 8 digital inputs
 // reference PJRC forums for more information about how Teensy
 // microcontrollers can be configured as custom HID devices
-#define IMU_ADDON_VENDOR 0x16C0 //VID of device
-#define IMU_ADDON_USB 0x0478 //PID of device
+#define GAMEPAD_IMU_ADDON_VENDOR 0x16C0 //VID of device
+#define GAMEPAD_IMU_ADDON_USB 0x0478 //PID of device
 
 // internal. Don't expose this in JoyShockLibrary.hpp:
 typedef struct GYRO_AVERAGE_WINDOW {
@@ -309,8 +311,8 @@ public:
 			this->is_usb = true; // for now, only usb
 		}
 
-		if (dev->product_id == IMU_ADDON_USB) {
-			this->name = std::string("IMU Controller Add-On");
+		if (dev->product_id == GAMEPAD_IMU_ADDON_USB) {
+			this->name = std::string("Gamepad Motion Input Add-On");
 			this->left_right = 3; // left and right?
 			this->controller_type = ControllerType::addon;
 			this->is_usb = true; // for now, only usb
@@ -381,7 +383,8 @@ public:
 			return 250 * this->gyro_average_window_seconds;
 		}
 		if (this->controller_type == ControllerType::addon){
-			// 1000 samples per seconds
+			// 500 samples per seconds
+			// if device report rate changes, this needs to be changed
 			return 500 * this->gyro_average_window_seconds;
 		}
 		// 67 samples per second

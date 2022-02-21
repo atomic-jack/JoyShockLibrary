@@ -259,22 +259,22 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	if (jc->controller_type == ControllerType::addon) {
 		//float gyroConvert = 0;
 		//float accelConvert = 0;
-		int indexOffset = 2; // make room for the report ID byte + padding byte because i'm too lazy to bit shift my data from the IMU 
+		int indexOffset = 1; // make room for the report ID byte + padding byte because i'm too lazy to bit shift my data from the IMU 
 							 // idea! use padding byte as an indicator for gyro/accel sensivity, change conversion factor 
 							 // using a switch-case - todo, will require possible physical buttons on device to change stuff on the fly
 							 // could open the door to incorporating other IMU's with different conversion values
 
 		// Accelerometer:
 		// Accelerometer data is relative (g)
-        int16_t accelSampleX = uint16_to_int16(packet[indexOffset + 0] | (packet[indexOffset + 1] << 8) & 0xFF00);
-        int16_t accelSampleY = uint16_to_int16(packet[indexOffset + 2] | (packet[indexOffset + 3] << 8) & 0xFF00);
-        int16_t accelSampleZ = uint16_to_int16(packet[indexOffset + 4] | (packet[indexOffset + 5] << 8) & 0xFF00);
+        int16_t accelSampleX = uint16_to_int16(packet[indexOffset + 1] | (packet[indexOffset + 2] << 8) & 0xFF00);
+        int16_t accelSampleY = uint16_to_int16(packet[indexOffset + 3] | (packet[indexOffset + 4] << 8) & 0xFF00);
+        int16_t accelSampleZ = uint16_to_int16(packet[indexOffset + 5] | (packet[indexOffset + 6] << 8) & 0xFF00);
 
 		// Gyroscope:
         // Gyroscope data is relative (degrees/s)
-		int16_t gyroSampleX = uint16_to_int16(packet[indexOffset + 6] | (packet[indexOffset + 7] << 8) & 0xFF00);
-        int16_t gyroSampleY = uint16_to_int16(packet[indexOffset + 8] | (packet[indexOffset + 9] << 8) & 0xFF00);
-        int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset + 10] | (packet[indexOffset + 11] << 8) & 0xFF00);
+		int16_t gyroSampleX = uint16_to_int16(packet[indexOffset + 7] | (packet[indexOffset + 8] << 8) & 0xFF00);
+        int16_t gyroSampleY = uint16_to_int16(packet[indexOffset + 9] | (packet[indexOffset + 10] << 8) & 0xFF00);
+        int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset + 11] | (packet[indexOffset + 12] << 8) & 0xFF00);
 
         if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0) {
             // all zero?
@@ -303,6 +303,16 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 
         //printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
         //	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
+
+		// buttons
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 7) << JSOFFSET_SL) & JSMASK_SL;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 6) << JSOFFSET_SR) & JSMASK_SR;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 5) << JSOFFSET_SL2) & JSMASK_SL2;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 4) << JSOFFSET_SR2) & JSMASK_SR2;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 3) << JSOFFSET_SL3) & JSMASK_SL3;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 2) << JSOFFSET_SR3) & JSMASK_SR3;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset] >> 1) << JSOFFSET_SL4) & JSMASK_SL4;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset])      << JSOFFSET_SR4) & JSMASK_SR4;
 
 		if (jc->use_continuous_calibration) {
 				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,

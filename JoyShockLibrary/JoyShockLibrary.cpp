@@ -287,14 +287,14 @@ int JslConnectDevices()
 	hid_free_enumeration(devs);
 
 	// find imu controller add-on
-	devs = hid_enumerate(IMU_ADDON_VENDOR, 0x0);
+	devs = hid_enumerate(GAMEPAD_IMU_ADDON_VENDOR, 0x0);
 	cur_dev = devs;
 	while (cur_dev) {
 		// do we need to confirm vendor id if this is what we asked for?
-		if (cur_dev->vendor_id == IMU_ADDON_VENDOR) {
+		if (cur_dev->vendor_id == GAMEPAD_IMU_ADDON_VENDOR) {
 			// usb or bluetooth ds4:
 			printf("DS\n");
-			if (cur_dev->product_id == IMU_ADDON_USB) {
+			if (cur_dev->product_id == GAMEPAD_IMU_ADDON_USB) {
 				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
 				_joyshocks.emplace(jc->intHandle, jc);
 			}
@@ -772,7 +772,7 @@ int JslGetControllerType(int deviceId)
 		case ControllerType::s_ds:
 			return JS_TYPE_DS;
 		case ControllerType::addon:
-			return JS_TYPE_IMU_ADDON;	
+			return JS_TYPE_GAMEPAD_IMU_ADDON;	
 		default:
 		case ControllerType::n_switch:
 			return jc->left_right;
